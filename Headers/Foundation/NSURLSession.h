@@ -469,5 +469,134 @@ didReceiveChallenge: (NSURLAuthenticationChallenge*)challenge
 @end
 
 #endif
+
+#if OS_API_VERSION(MAC_OS_X_VERSION_10_11,GS_API_LATEST)
+
+/**
+ * An NSURLSessionStreamTask provides an interface to perform reads
+ * and writes to a TCP/IP stream created via NSURLSession.  This task
+ * may be explicitly created from an NSURLSession, or created as a
+ * result of the appropriate disposition response to a
+ * -URLSession:dataTask:didReceiveResponse: delegate message.
+ * 
+ * NSURLSessionStreamTask can be used to perform asynchronous reads
+ * and writes.  Reads and writes are enqueued and executed serially,
+ * with the completion handler being invoked on the sessions delegate
+ * queue.  If an error occurs, or the task is canceled, all
+ * outstanding read and write calls will have their completion
+ * handlers invoked with an appropriate error.
+ *
+ * It is also possible to create NSInputStream and NSOutputStream
+ * instances from an NSURLSessionTask by sending
+ * -captureStreams to the task.  All outstanding read and writess are
+ * completed before the streams are created.  Once the streams are
+ * delivered to the session delegate, the task is considered complete
+ * and will receive no more messsages.  These streams are
+ * disassociated from the underlying session.
+ */
+@interface NSURLSessionStreamTask : NSURLSessionTask
+
+/** 
+ * Read minBytes, or at most maxBytes bytes and invoke the completion
+ * handler on the sessions delegate queue with the data or an error.
+ * If an error occurs, any outstanding reads will also fail, and new
+ * read requests will error out immediately.
+ */
+- (void) readDataOfMinLength: (NSUInteger)minBytes
+                   maxLength: (NSUInteger)maxBytes
+                     timeout: (NSTimeInterval)timeout
+           completionHandler: (void (^) (NSData *data, BOOL atEOF, NSError *error))completionHandler;
+
+/**
+ * Write the data completely to the underlying socket.  If all the
+ * bytes have not been written by the timeout, a timeout error will
+ * occur.  Note that invocation of the completion handler does not
+ * guarantee that the remote side has received all the bytes, only
+ * that they have been written to the kernel. */
+- (void)         writeData: (NSData *)data
+                   timeout: (NSTimeInterval)timeout
+         completionHandler: (void (^) (NSError *error))completionHandler;
+
+/**
+ * -captureStreams completes any already enqueued reads
+ * and writes, and then invokes the
+ * URLSession:streamTask:didBecomeInputStream:outputStream: delegate
+ * message. When that message is received, the task object is
+ * considered completed and will not receive any more delegate
+ * messages. */
+- (void) captureStreams;
+
+/**
+ * Enqueue a request to close the write end of the underlying socket.
+ * All outstanding IO will complete before the write side of the
+ * socket is closed.  The server, however, may continue to write bytes
+ * back to the client, so best practice is to continue reading from
+ * the server until you receive EOF.
+ */
+- (void) closeWrite;
+
+/**
+ * Enqueue a request to close the read side of the underlying socket.
+ * All outstanding IO will complete before the read side is closed.
+ * You may continue writing to the server.
+ */
+- (void) closeRead;
+
+/**
+ * Begin encrypted handshake.  The handshake begins after all pending 
+ * IO has completed.  TLS authentication callbacks are sent to the 
+ * session's -URLSession:task:didReceiveChallenge:completionHandler:
+ */
+- (void) startSecureConnection;
+
+@end
+
+@protocol NSURLSessionStreamDelegate <NSURLSessionTaskDelegate>
+@optional
+
+/**
+ * Indicates that the read side of a connection has been closed.  Any
+ * outstanding reads complete, but future reads will immediately fail.
+ * This may be sent even when no reads are in progress. However, when
+ * this delegate message is received, there may still be bytes
+ * available.  You only know that no more bytes are available when you
+ * are able to read until EOF. */
+- (void)              URLSession: (NSURLSession *)session
+         readClosedForStreamTask: (NSURLSessionStreamTask *)streamTask;
+
+/**
+ * Indicates that the write side of a connection has been closed.
+ * Any outstanding writes complete, but future writes will immediately
+ * fail.
+ */
+- (void)               URLSession: (NSURLSession *)session
+         writeClosedForStreamTask: (NSURLSessionStreamTask *)streamTask;
+
+/**
+ * A notification that the system has determined that a better route
+ * to the host has been detected (eg, a wi-fi interface becoming
+ * available.)  This is a hint to the delegate that it may be
+ * desirable to create a new task for subsequent work.  Note that
+ * there is no guarantee that the future task will be able to connect
+ * to the host, so callers should should be prepared for failure of
+ * reads and writes over any new interface. */
+- (void)                         URLSession: (NSURLSession *)session
+         betterRouteDiscoveredForStreamTask: (NSURLSessionStreamTask *)streamTask;
+
+/**
+ * The given task has been completed, and unopened NSInputStream and
+ * NSOutputStream objects are created from the underlying network
+ * connection.  This will only be invoked after all enqueued IO has
+ * completed (including any necessary handshakes.)  The streamTask
+ * will not receive any further delegate messages.
+ */
+- (void)           URLSession: (NSURLSession *)session
+                   streamTask: (NSURLSessionStreamTask *)streamTask
+         didBecomeInputStream: (NSInputStream *)inputStream
+                 outputStream: (NSOutputStream *)outputStream;
+
+@end
+
+#endif
 #endif
 #endif

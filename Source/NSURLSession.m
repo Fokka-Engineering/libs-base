@@ -1153,6 +1153,39 @@ static int nextSessionIdentifier()
 
 @end
 
+@implementation NSURLSessionStreamTask
+
+- (void) readDataOfMinLength: (NSUInteger)minBytes
+                   maxLength: (NSUInteger)maxBytes
+                     timeout: (NSTimeInterval)timeout
+           completionHandler: (void (^) (NSData *data, BOOL atEOF, NSError *error))completionHandler
+{
+}
+
+- (void)         writeData: (NSData *)data
+                   timeout: (NSTimeInterval)timeout
+         completionHandler: (void (^) (NSError *error))completionHandler
+{
+}
+
+- (void) captureStreams
+{ 
+}
+
+- (void) closeWrite
+{
+}
+
+- (void) closeRead
+{
+}
+
+- (void) startSecureConnection
+{
+}
+
+@end
+
 @implementation NSURLSessionConfiguration
 
 static NSURLSessionConfiguration	*def = nil;
